@@ -37,7 +37,7 @@ The detailed project plan, including tasks, dependencies, and estimated hours, i
 - **Usability:** Clear console-based output  
 - **Reliability:** Handles missing or incorrect log-in/out data gracefully  
 - **Maintainability:** Modular and well-documented code  
-- **Performance:** Efficient processing (<2 seconds for employee list display)  
+  
 
 ---
 
