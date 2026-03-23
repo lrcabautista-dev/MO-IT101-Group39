@@ -29,9 +29,9 @@ public class MotorPHPayrollSystem {
     public static final DecimalFormat df = new DecimalFormat("#,##0.00");
 
     public static void main(String[] args) {
-        authenticateUser();
-    }
-
+    System.setOut(new java.io.PrintStream(System.out, true, java.nio.charset.StandardCharsets.UTF_8));
+    authenticateUser();
+}
     /**
      * Authenticates user and routes to corresponding interface
      */
