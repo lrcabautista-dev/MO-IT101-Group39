@@ -20,6 +20,11 @@ import java.util.List;
  *
  * Semi‑monthly payroll system that reads employee and attendance records
  * from CSV files and computes payroll from June to December.
+ *
+ * This version includes:
+ * - Efficient file reading: employee and attendance data loaded once.
+ * - Clear separation of concerns: employee lookup, payroll computation, and display are separate.
+ * - Full inline comments explaining not just what but why each calculation is done.
  */
 public class MotorPHPayrollSystem {
 
@@ -33,16 +38,20 @@ public class MotorPHPayrollSystem {
     private static List<String[]> attendanceRecords = new ArrayList<>();
 
     public static void main(String[] args) {
+        // Ensures UTF-8 output for currency symbols
         System.setOut(new java.io.PrintStream(System.out, true, java.nio.charset.StandardCharsets.UTF_8));
 
+        // Load all employee and attendance records once for efficiency
         loadEmployeeRecords();
         loadAttendanceRecords();
 
+        // Authenticate user before allowing access
         authenticateUser();
     }
 
     /**
      * Validates login credentials and routes the user to the correct menu.
+     * Exits program if login fails to prevent unauthorized access.
      */
     public static void authenticateUser() {
 
@@ -57,7 +66,7 @@ public class MotorPHPayrollSystem {
 
         if (!validUser || !validPassword) {
             System.out.println("Incorrect username and/or password.");
-            System.exit(0);
+            System.exit(0); // Prevent unauthorized access
         }
 
         if (username.equals("employee")) {
@@ -69,6 +78,7 @@ public class MotorPHPayrollSystem {
 
     /**
      * Employee interface menu.
+     * Allows employee to view personal information.
      */
     public static void runEmployeeInterface() {
 
@@ -82,27 +92,24 @@ public class MotorPHPayrollSystem {
             String option = scanner.nextLine();
 
             if (option.equals("1")) {
-
                 System.out.print("Enter Employee #: ");
                 String empNumber = scanner.nextLine();
 
                 lookupEmployeeRecord(empNumber);
 
             } else if (option.equals("2")) {
-
                 System.out.println("Program terminated.");
                 return;
 
             } else {
-
                 System.out.println("Invalid option.");
-
             }
         }
     }
 
     /**
      * Payroll staff main menu.
+     * Allows navigation to payroll processing or exit.
      */
     public static void runPayrollStaffMenu() {
 
@@ -133,6 +140,7 @@ public class MotorPHPayrollSystem {
 
     /**
      * Payroll processing submenu.
+     * Allows processing for one employee or all employees.
      */
     public static void runPayrollProcessingMenu() {
 
@@ -149,7 +157,6 @@ public class MotorPHPayrollSystem {
             switch (option) {
 
                 case "1":
-
                     System.out.print("Enter Employee #: ");
                     String empNumber = scanner.nextLine();
 
@@ -158,31 +165,27 @@ public class MotorPHPayrollSystem {
                     break;
 
                 case "2":
-
                     processPayrollForAllEmployees();
-
                     break;
 
                 case "3":
-
                     return;
 
                 default:
-
                     System.out.println("Invalid option.");
-
             }
         }
     }
 
     /**
      * Loads employee records from the CSV file once at program start.
+     * Using regex ensures fields with embedded commas remain intact.
      */
     public static void loadEmployeeRecords() {
 
         try (BufferedReader br = new BufferedReader(new FileReader(EMPLOYEE_FILE))) {
 
-            br.readLine();
+            br.readLine(); // Skip header line
 
             String line;
 
@@ -192,11 +195,12 @@ public class MotorPHPayrollSystem {
 
                 String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
+                // Remove whitespace from each field
                 for (int i = 0; i < data.length; i++) {
                     data[i] = data[i].trim();
                 }
 
-                employeeRecords.add(data);
+                employeeRecords.add(data); // Store for repeated access
             }
 
         } catch (IOException e) {
@@ -206,12 +210,13 @@ public class MotorPHPayrollSystem {
 
     /**
      * Loads attendance records from the CSV file once at program start.
+     * Prevents repeated file I/O during monthly calculations for efficiency.
      */
     public static void loadAttendanceRecords() {
 
         try (BufferedReader br = new BufferedReader(new FileReader(ATTENDANCE_FILE))) {
 
-            br.readLine();
+            br.readLine(); // Skip header
 
             String line;
 
@@ -225,7 +230,7 @@ public class MotorPHPayrollSystem {
                     data[i] = data[i].trim();
                 }
 
-                attendanceRecords.add(data);
+                attendanceRecords.add(data); // Store for processing
             }
 
         } catch (IOException e) {
@@ -235,6 +240,7 @@ public class MotorPHPayrollSystem {
 
     /**
      * Finds employee data using employee number.
+     * Returns null if employee does not exist.
      */
     public static String[] findEmployee(String empNumber) {
 
@@ -250,6 +256,7 @@ public class MotorPHPayrollSystem {
 
     /**
      * Processes payroll for all employees.
+     * Iterates over the stored employee list to compute payroll efficiently.
      */
     public static void processPayrollForAllEmployees() {
 
@@ -264,7 +271,9 @@ public class MotorPHPayrollSystem {
     }
 
     /**
-     * Processes payroll for one employee.
+     * Processes payroll for a single employee.
+     * Splits working hours into first and second cutoffs.
+     * Computes gross salary and applies statutory deductions for second cutoff.
      */
     public static void processPayrollForEmployee(String empNumber) {
 
@@ -273,7 +282,6 @@ public class MotorPHPayrollSystem {
         if (employee == null) {
 
             System.out.println("Employee number does not exist.");
-
             return;
         }
 
@@ -290,6 +298,7 @@ public class MotorPHPayrollSystem {
 
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("H:mm");
 
+        // Compute payroll for June to December
         for (int month = 6; month <= 12; month++) {
 
             double firstCutoffHours = 0;
@@ -297,6 +306,7 @@ public class MotorPHPayrollSystem {
 
             int daysInMonth = YearMonth.of(2024, month).lengthOfMonth();
 
+            // Iterate through all attendance records to compute hours
             for (String[] record : attendanceRecords) {
 
                 if (!record[0].equals(empNumber)) continue;
@@ -307,6 +317,7 @@ public class MotorPHPayrollSystem {
                 int recordDay = Integer.parseInt(dateParts[1]);
                 int recordYear = Integer.parseInt(dateParts[2]);
 
+                // Only include records matching current month/year
                 if (recordYear != 2024 || recordMonth != month) continue;
 
                 LocalTime login = LocalTime.parse(record[4], timeFormat);
@@ -314,6 +325,7 @@ public class MotorPHPayrollSystem {
 
                 double hoursWorked = computeHours(login, logout);
 
+                // Split into first and second cutoffs
                 if (recordDay <= 15) {
                     firstCutoffHours += hoursWorked;
                 } else {
@@ -327,12 +339,15 @@ public class MotorPHPayrollSystem {
 
     /**
      * Displays payroll results for a specific month.
+     * First cutoff: earnings only.
+     * Second cutoff: applies all statutory deductions.
      */
     public static void displayPayrollForMonth(int month, int daysInMonth,
             double firstHours, double secondHours, double hourlyRate) {
 
         String monthName = getMonthName(month);
 
+        // First cutoff: 1–15, no deductions
         double firstGross = firstHours * hourlyRate;
 
         System.out.println("\nCutoff Date: " + monthName + " 1 to 15");
@@ -340,10 +355,12 @@ public class MotorPHPayrollSystem {
         System.out.println("Gross Salary: ₱" + df.format(firstGross));
         System.out.println("Net Salary: ₱" + df.format(firstGross));
 
+        // Second cutoff: 16–end, deductions applied
         double secondGross = secondHours * hourlyRate;
 
         double monthlyGross = firstGross + secondGross;
 
+        // Compute statutory deductions based on full month
         double sss = computeSSS(monthlyGross);
         double philhealth = computePhilHealth(monthlyGross);
         double pagibig = computePagIbig(monthlyGross);
@@ -367,7 +384,11 @@ public class MotorPHPayrollSystem {
     }
 
     /**
-     * Computes daily working hours with payroll rules.
+     * Computes daily working hours with payroll rules:
+     * - Maximum of 8 billable hours
+     * - 1-hour break deduction if worked >4 hours
+     * - End time capped at 5:00 PM
+     * - Grace period gives full credit if login within 8:00–8:10
      */
     static double computeHours(LocalTime login, LocalTime logout) {
 
@@ -385,13 +406,13 @@ public class MotorPHPayrollSystem {
 
         long minutesWorked = Duration.between(login, logout).toMinutes();
 
-        if (minutesWorked > 240) {
+        if (minutesWorked > 240) { // Subtract lunch break if worked >4 hours
             minutesWorked -= 60;
         }
 
         double hours = minutesWorked / 60.0;
 
-        if (hours > 8) {
+        if (hours > 8) { // Cap at 8 hours
             hours = 8;
         }
 
@@ -406,9 +427,7 @@ public class MotorPHPayrollSystem {
         String[] employee = findEmployee(empNumber);
 
         if (employee == null) {
-
             System.out.println("Employee number does not exist.");
-
             return;
         }
 
@@ -433,8 +452,11 @@ public class MotorPHPayrollSystem {
         }
     }
 
+    /**
+     * Computes SSS contribution based on total monthly earnings.
+     * Table-based lookup according to statutory rates.
+     */
     public static double computeSSS(double salary) {
-
         if (salary < 3250) return 135.00;
         else if (salary < 3750) return 157.50;
         else if (salary < 4250) return 180.00;
@@ -482,6 +504,12 @@ public class MotorPHPayrollSystem {
         else return 1125.00;
     }
 
+    /**
+     * Computes PhilHealth contribution based on total monthly salary.
+     * Rules:
+     * - 3% of salary (standard)
+     * - Minimum 300, maximum 1800
+     */
     public static double computePhilHealth(double salary) {
 
         double premium = salary * 0.03;
@@ -492,6 +520,12 @@ public class MotorPHPayrollSystem {
         return premium;
     }
 
+    /**
+     * Computes Pag-IBIG contribution based on total monthly salary.
+     * Rules:
+     * - 1% for low-income (1000–1500)
+     * - 2% for other salaries
+     */
     public static double computePagIbig(double salary) {
 
         if (salary >= 1000 && salary <= 1500) return salary * 0.01;
@@ -499,6 +533,10 @@ public class MotorPHPayrollSystem {
         return salary * 0.02;
     }
 
+    /**
+     * Computes withholding tax based on total monthly salary.
+     * Progressive tax rates according to Philippine law.
+     */
     public static double computeIncomeTax(double salary) {
 
         if (salary <= 20832) return 0;
