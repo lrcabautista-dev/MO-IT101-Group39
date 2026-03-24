@@ -28,7 +28,7 @@ import java.util.List;
  * - This prevents reading the same file multiple times .
  * - Full inline comments explaining not just what but why each calculation is done.
  * - Termination of program every time an employee number does not exist.
- * - In some instances, the program also terminates when an invalid option is entered.
+ * - Refactor: replace System.exit(0) with return for cleaner program termination
  */
 public class MotorPHPayrollSystem {
 
@@ -174,10 +174,10 @@ public class MotorPHPayrollSystem {
 
                 case "3":
                     System.exit(0);
-                    
+
                 default:
                     System.out.println("Invalid option.");
-                    System.exit(0);
+                    
             }
         }
     }
@@ -287,7 +287,7 @@ public class MotorPHPayrollSystem {
         if (employee == null) {
 
             System.out.println("Employee number does not exist.");
-            System.exit(0); // Terminates the program with incorrect input of Employee Number
+            return;
         }
 
         String lastName = employee[1];
@@ -426,6 +426,7 @@ public class MotorPHPayrollSystem {
 
     /**
      * Displays employee information for employee login.
+     * Terminates the program if employee number input is not valid.
      */
     public static void lookupEmployeeRecord(String empNumber) {
 
@@ -433,7 +434,7 @@ public class MotorPHPayrollSystem {
 
         if (employee == null) {
             System.out.println("Employee number does not exist.");
-            System.exit(0); // Terminates the program if input of Employee Number is incorrect
+            System.exit(0);
         }
 
         System.out.println("Employee Number: " + employee[0]);
