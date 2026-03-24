@@ -24,6 +24,8 @@ import java.util.List;
  * This version includes:
  * - Efficient file reading: employee and attendance data loaded once.
  * - Clear separation of concerns: employee lookup, payroll computation, and display are separate.
+ * - Load the employee and attendance CSV files once at program start to avoid repeated file I/O.
+ * - This prevents reading the same file multiple times .
  * - Full inline comments explaining not just what but why each calculation is done.
  */
 public class MotorPHPayrollSystem {
