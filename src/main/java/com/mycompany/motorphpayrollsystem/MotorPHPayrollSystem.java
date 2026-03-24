@@ -9,325 +9,432 @@ import java.time.YearMonth;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * MotorPH Payroll System
  *
- * Implements a semi-monthly payroll model:
- * - Cutoff 1 (1–15): earnings only (no deductions applied)
- * - Cutoff 2 (16–end): full statutory deductions applied
+ * Start Date: January 2026
+ * End Date: March 2026
  *
- * All government deductions are computed based on total monthly earnings
- * and applied entirely during the second cutoff.
+ * Semi‑monthly payroll system that reads employee and attendance records
+ * from CSV files and computes payroll from June to December.
  */
 public class MotorPHPayrollSystem {
 
-    /** Shared input handler */
     public static final Scanner scanner = new Scanner(System.in);
+    public static final DecimalFormat df = new DecimalFormat("#,##0.######");
 
-    /** Formatter for consistent numeric output */
-    public static final DecimalFormat df = new DecimalFormat("#,##0.00");
+    private static final String EMPLOYEE_FILE = "MotorPH_Employee Data - Employee Details.csv";
+    private static final String ATTENDANCE_FILE = "MotorPH_Employee Data - Attendance Record.csv";
+
+    private static List<String[]> employeeRecords = new ArrayList<>();
+    private static List<String[]> attendanceRecords = new ArrayList<>();
 
     public static void main(String[] args) {
-    System.setOut(new java.io.PrintStream(System.out, true, java.nio.charset.StandardCharsets.UTF_8));
-    authenticateUser();
-}
+        System.setOut(new java.io.PrintStream(System.out, true, java.nio.charset.StandardCharsets.UTF_8));
+
+        loadEmployeeRecords();
+        loadAttendanceRecords();
+
+        authenticateUser();
+    }
+
     /**
-     * Authenticates user and routes to corresponding interface
+     * Validates login credentials and routes the user to the correct menu.
      */
     public static void authenticateUser() {
+
         System.out.print("Enter username: ");
         String username = scanner.nextLine();
 
         System.out.print("Enter password: ");
         String password = scanner.nextLine();
 
-        if ((username.equals("employee") || username.equals("payroll_staff"))
-                && password.equals("12345")) {
+        boolean validUser = username.equals("employee") || username.equals("payroll_staff");
+        boolean validPassword = password.equals("12345");
 
-            System.out.println("Login successful!\n");
+        if (!validUser || !validPassword) {
+            System.out.println("Incorrect username and/or password.");
+            System.exit(0);
+        }
 
-            if (username.equals("employee")) {
-                runEmployeeInterface();
-            } else {
-                runPayrollStaffMenu();
-            }
-
+        if (username.equals("employee")) {
+            runEmployeeInterface();
         } else {
-            System.out.println("Invalid credentials.");
+            runPayrollStaffMenu();
         }
     }
 
     /**
-     * Allows employee to retrieve personal record
+     * Employee interface menu.
      */
     public static void runEmployeeInterface() {
-        System.out.print("Enter Employee ID: ");
-        String id = scanner.nextLine();
-        lookupEmployeeRecord(id);
+
+        while (true) {
+
+            System.out.println("\nEmployee Menu");
+            System.out.println("1. Enter Employee Number");
+            System.out.println("2. Exit Program");
+            System.out.print("Select option: ");
+
+            String option = scanner.nextLine();
+
+            if (option.equals("1")) {
+
+                System.out.print("Enter Employee #: ");
+                String empNumber = scanner.nextLine();
+
+                lookupEmployeeRecord(empNumber);
+
+            } else if (option.equals("2")) {
+
+                System.out.println("Program terminated.");
+                return;
+
+            } else {
+
+                System.out.println("Invalid option.");
+
+            }
+        }
     }
 
     /**
-     * Main navigation menu for payroll staff
+     * Payroll staff main menu.
      */
     public static void runPayrollStaffMenu() {
+
         while (true) {
-            System.out.println("\n=== Payroll Staff Menu ===");
+
+            System.out.println("\nPayroll Staff Menu");
             System.out.println("1. Process Payroll");
             System.out.println("2. Exit Program");
             System.out.print("Select option: ");
-            String choice = scanner.nextLine();
 
-            switch (choice) {
+            String option = scanner.nextLine();
+
+            switch (option) {
+
                 case "1":
                     runPayrollProcessingMenu();
                     break;
+
                 case "2":
-                    System.out.println("Exiting program...");
+                    System.out.println("Program terminated.");
                     return;
+
                 default:
-                    System.out.println("Invalid option. Try again.");
+                    System.out.println("Invalid option.");
             }
         }
     }
 
     /**
-     * Submenu for payroll processing operations
+     * Payroll processing submenu.
      */
     public static void runPayrollProcessingMenu() {
+
         while (true) {
-            System.out.println("\n=== Payroll Processing Options ===");
-            System.out.println("1. Process One Employee");
-            System.out.println("2. Process All Employees");
+
+            System.out.println("\nProcess Payroll");
+            System.out.println("1. One Employee");
+            System.out.println("2. All Employees");
             System.out.println("3. Exit Program");
             System.out.print("Select option: ");
-            String choice = scanner.nextLine();
 
-            switch (choice) {
+            String option = scanner.nextLine();
+
+            switch (option) {
+
                 case "1":
-                    System.out.print("Enter Employee ID: ");
+
+                    System.out.print("Enter Employee #: ");
                     String empNumber = scanner.nextLine();
+
                     processPayrollForEmployee(empNumber);
+
                     break;
+
                 case "2":
+
                     processPayrollForAllEmployees();
+
                     break;
+
                 case "3":
-                    System.out.println("Returning to Payroll Staff Menu...");
+
                     return;
+
                 default:
-                    System.out.println("Invalid option. Try again.");
+
+                    System.out.println("Invalid option.");
+
             }
         }
     }
 
     /**
-     * Iterates through all employee records and generates full payroll reports
-     * using the same computation logic applied to individual processing
+     * Loads employee records from the CSV file once at program start.
+     */
+    public static void loadEmployeeRecords() {
+
+        try (BufferedReader br = new BufferedReader(new FileReader(EMPLOYEE_FILE))) {
+
+            br.readLine();
+
+            String line;
+
+            while ((line = br.readLine()) != null) {
+
+                if (line.trim().isEmpty()) continue;
+
+                String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = data[i].trim();
+                }
+
+                employeeRecords.add(data);
+            }
+
+        } catch (IOException e) {
+            System.out.println("Error reading employee file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Loads attendance records from the CSV file once at program start.
+     */
+    public static void loadAttendanceRecords() {
+
+        try (BufferedReader br = new BufferedReader(new FileReader(ATTENDANCE_FILE))) {
+
+            br.readLine();
+
+            String line;
+
+            while ((line = br.readLine()) != null) {
+
+                if (line.trim().isEmpty()) continue;
+
+                String[] data = line.split(",");
+
+                for (int i = 0; i < data.length; i++) {
+                    data[i] = data[i].trim();
+                }
+
+                attendanceRecords.add(data);
+            }
+
+        } catch (IOException e) {
+            System.out.println("Error reading attendance file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Finds employee data using employee number.
+     */
+    public static String[] findEmployee(String empNumber) {
+
+        for (String[] employee : employeeRecords) {
+
+            if (employee[0].equals(empNumber)) {
+                return employee;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Processes payroll for all employees.
      */
     public static void processPayrollForAllEmployees() {
-        String employeeFile = "MotorPH_Employee Data - Employee Details.csv";
 
-        try (BufferedReader br = new BufferedReader(new FileReader(employeeFile))) {
-            br.readLine();
-            String line;
+        for (String[] employee : employeeRecords) {
 
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
+            String empNumber = employee[0];
 
-                // Regex split ensures fields with embedded commas remain intact
-                String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-                for (int i = 0; i < data.length; i++) data[i] = data[i].trim();
+            processPayrollForEmployee(empNumber);
 
-                String empNumber = data[0];
-
-                processPayrollForEmployee(empNumber);
-
-                System.out.println("\n===========================================\n");
-            }
-
-        } catch (IOException e) {
-            System.out.println("Error reading employee file: " + e.getMessage());
+            System.out.println("\n--------------------------------------------\n");
         }
     }
 
     /**
-     * Computes payroll per employee across all months and cutoffs
+     * Processes payroll for one employee.
      */
     public static void processPayrollForEmployee(String empNumber) {
-        String employeeFile = "MotorPH_Employee Data - Employee Details.csv";
-        String attendanceFile = "MotorPH_Employee Data - Attendance Record.csv";
 
-        String firstName = "";
-        String lastName = "";
-        String birthday = "";
-        double hourlyRate = 0.0;
-        boolean found = false;
+        String[] employee = findEmployee(empNumber);
 
-        try (BufferedReader br = new BufferedReader(new FileReader(employeeFile))) {
-            br.readLine();
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
+        if (employee == null) {
 
-                String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-                for (int i = 0; i < data.length; i++) data[i] = data[i].trim();
+            System.out.println("Employee number does not exist.");
 
-                if (data[0].equals(empNumber)) {
-                    lastName = data[1];
-                    firstName = data[2];
-                    birthday = data[3];
-
-                    // Remove quotes from numeric field before parsing
-                    String rateStr = data[18].replace("\"", "").trim();
-                    hourlyRate = rateStr.isEmpty() ? 0.0 : Double.parseDouble(rateStr);
-
-                    found = true;
-                    break;
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("Error reading employee file: " + e.getMessage());
             return;
         }
 
-        if (!found) {
-            System.out.println("Employee not found.");
-            return;
-        }
+        String lastName = employee[1];
+        String firstName = employee[2];
+        String birthday = employee[3];
 
-        System.out.println("\n===================================");
-        System.out.println("Employee # : " + empNumber);
-        System.out.println("Name       : " + lastName + ", " + firstName);
-        System.out.println("Birthday   : " + birthday);
-        System.out.println("===================================");
+        String rateStr = employee[18].replace("\"", "").trim();
+        double hourlyRate = rateStr.isEmpty() ? 0.0 : Double.parseDouble(rateStr);
+
+        System.out.println("\nEmployee #: " + empNumber);
+        System.out.println("Employee Name: " + lastName + ", " + firstName);
+        System.out.println("Birthday: " + birthday);
 
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("H:mm");
 
         for (int month = 6; month <= 12; month++) {
-            double firstHalfHours = 0;
-            double secondHalfHours = 0;
+
+            double firstCutoffHours = 0;
+            double secondCutoffHours = 0;
+
             int daysInMonth = YearMonth.of(2024, month).lengthOfMonth();
 
-            try (BufferedReader br = new BufferedReader(new FileReader(attendanceFile))) {
-                br.readLine();
-                String line;
-                while ((line = br.readLine()) != null) {
-                    if (line.trim().isEmpty()) continue;
+            for (String[] record : attendanceRecords) {
 
-                    String[] data = line.split(",");
-                    for (int i = 0; i < data.length; i++) data[i] = data[i].trim();
+                if (!record[0].equals(empNumber)) continue;
 
-                    if (!data[0].equals(empNumber)) continue;
+                String[] dateParts = record[3].split("/");
 
-                    String[] dateParts = data[3].split("/");
-                    int recordMonth = Integer.parseInt(dateParts[0]);
-                    int day = Integer.parseInt(dateParts[1]);
-                    int year = Integer.parseInt(dateParts[2]);
+                int recordMonth = Integer.parseInt(dateParts[0]);
+                int recordDay = Integer.parseInt(dateParts[1]);
+                int recordYear = Integer.parseInt(dateParts[2]);
 
-                    // Only include records matching current processing month/year
-                    if (year != 2024 || recordMonth != month) continue;
+                if (recordYear != 2024 || recordMonth != month) continue;
 
-                    LocalTime login = LocalTime.parse(data[4], timeFormat);
-                    LocalTime logout = LocalTime.parse(data[5], timeFormat);
+                LocalTime login = LocalTime.parse(record[4], timeFormat);
+                LocalTime logout = LocalTime.parse(record[5], timeFormat);
 
-                    double hoursWorked = computeHours(login, logout);
+                double hoursWorked = computeHours(login, logout);
 
-                    // Split working hours into semi-monthly periods
-                    if (day <= 15) firstHalfHours += hoursWorked;
-                    else secondHalfHours += hoursWorked;
+                if (recordDay <= 15) {
+                    firstCutoffHours += hoursWorked;
+                } else {
+                    secondCutoffHours += hoursWorked;
                 }
-            } catch (IOException e) {
-                System.out.println("Error reading attendance file: " + e.getMessage());
-                continue;
             }
 
-            String monthName = switch (month) {
-                case 6 -> "June"; case 7 -> "July"; case 8 -> "August";
-                case 9 -> "September"; case 10 -> "October";
-                case 11 -> "November"; case 12 -> "December";
-                default -> "Month " + month;
-            };
-
-            double firstGross = firstHalfHours * hourlyRate;
-            double firstNet = firstGross;
-
-            System.out.println("\nCutoff Date: " + monthName + " 1–15");
-            System.out.println("Total Hours Worked : " + df.format(firstHalfHours));
-            System.out.println("Gross Salary       : ₱" + df.format(firstGross));
-            System.out.println("Net Salary         : ₱" + df.format(firstNet));
-
-            double secondGross = secondHalfHours * hourlyRate;
-
-            // Total monthly earnings used as basis for statutory deductions
-            double totalGross = firstGross + secondGross;
-
-            double sss = computeSSS(totalGross);
-            double philhealth = computePhilHealth(totalGross);
-            double pagibig = computePagIbig(totalGross);
-            double tax = computeIncomeTax(totalGross);
-            double totalDeductions = sss + philhealth + pagibig + tax;
-
-            // Entire deduction is applied during second cutoff
-            double secondNet = secondGross - totalDeductions;
-
-            System.out.println("\nCutoff Date: " + monthName + " 16–" + daysInMonth);
-            System.out.println("Total Hours Worked : " + df.format(secondHalfHours));
-            System.out.println("Gross Salary       : ₱" + df.format(secondGross));
-            System.out.println("Deductions:");
-            System.out.println("  SSS              : ₱" + df.format(sss));
-            System.out.println("  PhilHealth       : ₱" + df.format(philhealth));
-            System.out.println("  Pag-IBIG         : ₱" + df.format(pagibig));
-            System.out.println("  Withholding Tax  : ₱" + df.format(tax));
-            System.out.println("Total Deductions   : ₱" + df.format(totalDeductions));
-            System.out.println("Net Salary         : ₱" + df.format(secondNet));
+            displayPayrollForMonth(month, daysInMonth, firstCutoffHours, secondCutoffHours, hourlyRate);
         }
     }
 
     /**
-     * Calculates effective work hours with constraints:
-     * - Maximum of 8 billable hours
-     * - 1-hour break deduction
-     * - End time capped at 5:00 PM
-     * - Grace period grants full credit if arrival is within threshold
+     * Displays payroll results for a specific month.
      */
-    static double computeHours(LocalTime login, LocalTime logout) {
-        LocalTime graceTime = LocalTime.of(8, 10);
-        LocalTime cutoffTime = LocalTime.of(17, 0);
+    public static void displayPayrollForMonth(int month, int daysInMonth,
+            double firstHours, double secondHours, double hourlyRate) {
 
-        if (logout.isAfter(cutoffTime)) logout = cutoffTime;
+        String monthName = getMonthName(month);
 
-        long minutesWorked = Duration.between(login, logout).toMinutes();
-        if (minutesWorked > 60) minutesWorked -= 60;
-        else minutesWorked = 0;
+        double firstGross = firstHours * hourlyRate;
 
-        double hours = minutesWorked / 60.0;
-        if (!login.isAfter(graceTime)) return 8.0;
-        return Math.min(hours, 8.0);
+        System.out.println("\nCutoff Date: " + monthName + " 1 to 15");
+        System.out.println("Total Hours Worked: " + df.format(firstHours));
+        System.out.println("Gross Salary: ₱" + df.format(firstGross));
+        System.out.println("Net Salary: ₱" + df.format(firstGross));
+
+        double secondGross = secondHours * hourlyRate;
+
+        double monthlyGross = firstGross + secondGross;
+
+        double sss = computeSSS(monthlyGross);
+        double philhealth = computePhilHealth(monthlyGross);
+        double pagibig = computePagIbig(monthlyGross);
+        double tax = computeIncomeTax(monthlyGross);
+
+        double totalDeductions = sss + philhealth + pagibig + tax;
+
+        double secondNet = secondGross - totalDeductions;
+
+        System.out.println("\nCutoff Date: " + monthName + " 16 to " + daysInMonth);
+        System.out.println("Total Hours Worked: " + df.format(secondHours));
+        System.out.println("Gross Salary: ₱" + df.format(secondGross));
+
+        System.out.println("SSS: ₱" + df.format(sss));
+        System.out.println("PhilHealth: ₱" + df.format(philhealth));
+        System.out.println("Pag-IBIG: ₱" + df.format(pagibig));
+        System.out.println("Tax: ₱" + df.format(tax));
+
+        System.out.println("Total Deductions: ₱" + df.format(totalDeductions));
+        System.out.println("Net Salary: ₱" + df.format(secondNet));
     }
 
-    public static void lookupEmployeeRecord(String targetId) {
-        String file = "MotorPH_Employee Data - Employee Details.csv";
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            br.readLine();
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] data = line.split(",");
-                for (int i = 0; i < data.length; i++) data[i] = data[i].trim();
-                if (data[0].equals(targetId)) {
-                    System.out.println("\nEmployee ID : " + data[0]);
-                    System.out.println("Name        : " + data[1] + ", " + data[2]);
-                    System.out.println("Birthday    : " + data[3]);
-                    return;
-                }
-            }
-            System.out.println("Record not found.");
-        } catch (IOException e) {
-            System.out.println("Error reading file: " + e.getMessage());
+    /**
+     * Computes daily working hours with payroll rules.
+     */
+    static double computeHours(LocalTime login, LocalTime logout) {
+
+        LocalTime officialStart = LocalTime.of(8, 0);
+        LocalTime graceLimit = LocalTime.of(8, 10);
+        LocalTime officialEnd = LocalTime.of(17, 0);
+
+        if (!login.isBefore(officialStart) && !login.isAfter(graceLimit)) {
+            login = officialStart;
+        }
+
+        if (logout.isAfter(officialEnd)) {
+            logout = officialEnd;
+        }
+
+        long minutesWorked = Duration.between(login, logout).toMinutes();
+
+        if (minutesWorked > 240) {
+            minutesWorked -= 60;
+        }
+
+        double hours = minutesWorked / 60.0;
+
+        if (hours > 8) {
+            hours = 8;
+        }
+
+        return hours;
+    }
+
+    /**
+     * Displays employee information for employee login.
+     */
+    public static void lookupEmployeeRecord(String empNumber) {
+
+        String[] employee = findEmployee(empNumber);
+
+        if (employee == null) {
+
+            System.out.println("Employee number does not exist.");
+
+            return;
+        }
+
+        System.out.println("Employee Number: " + employee[0]);
+        System.out.println("Employee Name: " + employee[1] + ", " + employee[2]);
+        System.out.println("Birthday: " + employee[3]);
+    }
+
+    public static String getMonthName(int month) {
+
+        switch (month) {
+
+            case 6: return "June";
+            case 7: return "July";
+            case 8: return "August";
+            case 9: return "September";
+            case 10: return "October";
+            case 11: return "November";
+            case 12: return "December";
+
+            default: return "";
         }
     }
 
     public static double computeSSS(double salary) {
+
         if (salary < 3250) return 135.00;
         else if (salary < 3750) return 157.50;
         else if (salary < 4250) return 180.00;
@@ -376,27 +483,29 @@ public class MotorPHPayrollSystem {
     }
 
     public static double computePhilHealth(double salary) {
+
         double premium = salary * 0.03;
+
         if (salary <= 10000) return 300;
-        else if (salary >= 60000) return 1800;
-        else return premium;
+        if (salary >= 60000) return 1800;
+
+        return premium;
     }
 
     public static double computePagIbig(double salary) {
+
         if (salary >= 1000 && salary <= 1500) return salary * 0.01;
-        else return salary * 0.02;
+
+        return salary * 0.02;
     }
 
     public static double computeIncomeTax(double salary) {
+
         if (salary <= 20832) return 0;
         else if (salary < 33333) return (salary - 20832) * 0.20;
         else if (salary < 66667) return 2500 + (salary - 33333) * 0.25;
         else if (salary < 166667) return 10833 + (salary - 66667) * 0.30;
         else if (salary < 666667) return 40833.33 + (salary - 166667) * 0.32;
         else return 200833.33 + (salary - 666667) * 0.35;
-    }
-
-    public static double computeNetPay(double salary) {
-        return salary - (computeSSS(salary) + computePhilHealth(salary) + computePagIbig(salary) + computeIncomeTax(salary));
     }
 }
