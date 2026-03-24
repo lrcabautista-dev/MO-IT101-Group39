@@ -27,6 +27,8 @@ import java.util.List;
  * - Load the employee and attendance CSV files once at program start to avoid repeated file I/O.
  * - This prevents reading the same file multiple times .
  * - Full inline comments explaining not just what but why each calculation is done.
+ * - Termination of program every time an employee number does not exist.
+ * - In some instances, the program also terminates when an invalid option is entered.
  */
 public class MotorPHPayrollSystem {
 
@@ -68,7 +70,7 @@ public class MotorPHPayrollSystem {
 
         if (!validUser || !validPassword) {
             System.out.println("Incorrect username and/or password.");
-            System.exit(0); // Prevent unauthorized access
+            return;
         }
 
         if (username.equals("employee")) {
@@ -171,10 +173,11 @@ public class MotorPHPayrollSystem {
                     break;
 
                 case "3":
-                    return;
-
+                    System.exit(0);
+                    
                 default:
                     System.out.println("Invalid option.");
+                    System.exit(0);
             }
         }
     }
@@ -284,7 +287,7 @@ public class MotorPHPayrollSystem {
         if (employee == null) {
 
             System.out.println("Employee number does not exist.");
-            return;
+            System.exit(0); // Terminates the program with incorrect input of Employee Number
         }
 
         String lastName = employee[1];
@@ -430,7 +433,7 @@ public class MotorPHPayrollSystem {
 
         if (employee == null) {
             System.out.println("Employee number does not exist.");
-            return;
+            System.exit(0); // Terminates the program if input of Employee Number is incorrect
         }
 
         System.out.println("Employee Number: " + employee[0]);
