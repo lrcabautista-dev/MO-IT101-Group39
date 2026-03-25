@@ -434,7 +434,7 @@ public class MotorPHPayrollSystem {
 
         if (employee == null) {
             System.out.println("Employee number does not exist.");
-            System.exit(0);
+            return;
         }
 
         System.out.println("Employee Number: " + employee[0]);
