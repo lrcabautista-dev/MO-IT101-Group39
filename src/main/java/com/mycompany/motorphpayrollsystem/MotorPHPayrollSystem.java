@@ -27,7 +27,6 @@ import java.util.List;
  * - Load the employee and attendance CSV files once at program start to avoid repeated file I/O.
  * - This prevents reading the same file multiple times .
  * - Full inline comments explaining not just what but why each calculation is done.
- * - Termination of program every time an employee number does not exist.
  * - Refactor: replace System.exit(0) with return for cleaner program termination
  */
 public class MotorPHPayrollSystem {
